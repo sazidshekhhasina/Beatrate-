@@ -189,22 +189,25 @@ ol.how li{margin-bottom:8px;color:#c9ccc2}
 </style>
 <script>
 (()=>{
-const CFG=window.BR_FB, BIZ='biz/main';
+const CFG=window.BR_FB, BIZ='biz/main', OWNER='sazidshahriar123@gmail.com';
 window.BR_WEB=true;
-firebase.initializeApp(CFG);
+firebase.initializeApp(Object.assign({},CFG,{authDomain:location.hostname.endsWith('vercel.app')||location.hostname.indexOf('.')>0&&location.hostname!=='localhost'?location.host:CFG.authDomain}));
 const auth=firebase.auth(), fs=firebase.firestore();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+let redirErr='';auth.getRedirectResult().catch(e=>{redirErr='লগইন হয়নি: '+(e.code||e.message);if(document.getElementById('brgate'))showGate('আপনার অর্ডার আর হিসাব দেখতে Gmail দিয়ে লগইন করুন।',redirErr)});
 const persist=fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 const W={user:null,email:'',owner:false,members:[],ownerEmail:'',async logout(){await auth.signOut();location.reload()},
  async setMembers(list){await fs.doc(BIZ).set({members:list},{merge:true});W.members=list}};
 window.BR_WEBAPI=W;
 const gate=()=>{let g=document.getElementById('brgate');if(!g){g=document.createElement('div');g.id='brgate';document.body.appendChild(g)}return g};
 const showGate=(msg,err,signedIn)=>{const g=gate();g.hidden=false;g.innerHTML=`<div class="box"><img src="/favicon.png" alt=""><h1>Beatrate Production</h1><p>${msg}</p>${signedIn?'':'<button id="brlogin">Gmail দিয়ে লগইন</button>'}${signedIn?'<button class="out" id="brout">অন্য Gmail দিয়ে লগইন</button>':''}<div class="err">${err||''}</div></div>`;
- const b=document.getElementById('brlogin');if(b)b.onclick=async()=>{const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});try{await auth.signInWithPopup(pr)}catch(e){if(/popup/i.test(e.code||''))auth.signInWithRedirect(pr);else showGate(msg,'লগইন হয়নি: '+(e.code||e.message))}};
+ const b=document.getElementById('brlogin');if(b)b.onclick=async()=>{const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});const mob=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);if(mob){auth.signInWithRedirect(pr);return}try{await auth.signInWithPopup(pr)}catch(e){if(/popup-blocked|operation-not-supported|web-storage/i.test(e.code||''))auth.signInWithRedirect(pr);else if(!/cancelled|closed-by-user/i.test(e.code||''))showGate(msg,'লগইন হয়নি: '+(e.code||e.message))}};
  const o=document.getElementById('brout');if(o)o.onclick=()=>W.logout()};
 let resolveReady;const ready=new Promise(r=>resolveReady=r);
 auth.onAuthStateChanged(async u=>{
  if(!u){if(document.body)showGate('আপনার অর্ডার আর হিসাব দেখতে Gmail দিয়ে লগইন করুন।');else addEventListener('DOMContentLoaded',()=>showGate('আপনার অর্ডার আর হিসাব দেখতে Gmail দিয়ে লগইন করুন।'));return}
  W.user=u;W.email=u.email||'';
+ if(W.email.toLowerCase()!==OWNER){await auth.signOut();showGate(`<b>${W.email}</b> দিয়ে এই সাইটে ঢোকা যাবে না। শুধু মালিকের Gmail দিয়ে লগইন করা যায়।`,'');return}
  try{await persist;
   let bd=null;try{bd=await fs.doc(BIZ).get()}catch(e){if(e.code==='permission-denied'){showGate(`<b>${u.email}</b> এই অ্যাকাউন্টে ঢোকার অনুমতি নেই। মালিককে বলুন সেটিংসে আপনার Gmail যোগ করতে।`,'',true);return}throw e}
   try{await fs.doc(BIZ).set({touched:Date.now()},{merge:true});W.owner=true}catch(_){W.owner=false}
@@ -946,8 +949,7 @@ async function gRefresh(){if(!window.BR_LOCAL)return;try{ast=await (await fetch(
  const gt=$('#gtop');if(gt){gt.hidden=!!gst.loggedIn||(gst.fb&&!gst.configured&&!gst.offline)}const gp=$('#gpanel');if(gp&&!gp.contains(document.activeElement))gp.innerHTML=gPanel()}
 function ago(t){if(!t)return 'এখনো হয়নি';const m=Math.round((Date.now()-t)/60000);return m<1?'এইমাত্র':m<60?`${bn(m)} মিনিট আগে`:m<1440?`${bn(Math.round(m/60))} ঘণ্টা আগে`:dmy(new Date(t).toISOString().slice(0,10))}
 function wPanel(){const W=window.BR_WEBAPI||{};
- return `<h3>অ্যাকাউন্ট</h3><div class="row" style="justify-content:space-between"><div><b>${esc(W.email||'')}</b><div class="sub">${W.owner?'মালিক':'পার্টনার'} · ডেটা Firebase-এ সুরক্ষিত</div></div><button data-act="wlogout">লগআউট</button></div>`+
- (W.owner?`<h3 style="margin-top:18px">পার্টনার (যারা লগইন করে কাজ করতে পারবে)</h3>${(W.members||[]).map(m=>`<div class="row" style="justify-content:space-between;margin:6px 0"><span>${esc(m)}</span><button data-wdel="${esc(m)}">সরান</button></div>`).join('')||'<p class="mut" style="margin-top:0">এখনো কেউ যোগ হয়নি।</p>'}<div class="row" style="gap:8px;margin-top:8px"><input id="w-mem" type="email" placeholder="partner@gmail.com" style="flex:1"><button class="pri" data-act="wadd">যোগ করুন</button></div>`:'')}
+ return `<h3>অ্যাকাউন্ট</h3><div class="row" style="justify-content:space-between"><div><b>${esc(W.email||'')}</b><div class="sub">${W.owner?'মালিক':'পার্টনার'} · ডেটা Firebase-এ সুরক্ষিত</div></div><button data-act="wlogout">লগআউট</button></div>`}
 function wChip(){const W=window.BR_WEBAPI||{};return `<span class="dotc ${navigator.onLine?'ok':'warn'}"></span><div><b>${esc(W.email||'')}</b><div class="sub">${navigator.onLine?'অনলাইন — সব সেভ হচ্ছে':'অফলাইন — নেট এলে সেভ হবে'}</div></div>`}
 function gChip(){if(!gst.loggedIn)return `<a href="#prices" class="sub">☁ Gmail দিয়ে লগইন করা নেই</a>`;
  return `<span class="dotc ${gst.pending||gst.error?'warn':'ok'}"></span><div><b>${esc(gst.email)}</b><div class="sub">${gst.syncing?'সিঙ্ক হচ্ছে…':gst.error?'অফলাইন — নেট এলে সিঙ্ক হবে':gst.pending?'সিঙ্ক বাকি':'সিঙ্ক হয়েছে '+ago(gst.lastSync)}</div></div>`}
