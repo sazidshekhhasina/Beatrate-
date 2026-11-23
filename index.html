@@ -251,6 +251,7 @@ window.claude={use:async n=>{if(n==='db'){await ready;return db}if(n==='download
   <a href="#orders" data-v="orders"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3h8l4 4v14H4V3h4z"/><path d="M8 11h8M8 15h6"/></svg>অর্ডার<span class="cnt" id="ocnt" hidden></span></a>
   <a href="#calculator" data-v="calculator"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/></svg>দাম হিসাব</a>
   <a href="#ad-cost" data-v="ad-cost"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a3 3 0 0 1 0 6M19 6a7 7 0 0 1 0 12"/></svg>অ্যাড খরচ</a>
+  <a href="#trash" data-v="trash"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>রিসাইকেল বিন</a>
  </nav>
  <div class="navlbl">সেটিং</div>
  <nav><a href="#prices" data-v="prices"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>দাম ও সেটিং</a></nav>
@@ -974,7 +975,7 @@ function greet(){const h=new Date().getHours();return h<5?'শুভ রাত�
 function countUp(){const els=document.querySelectorAll('#app [data-n]');const t0=performance.now(),D=1100;
  const step=t=>{const p=Math.min(1,(t-t0)/D),e=1-Math.pow(1-p,3);for(const el of els){const v=+el.dataset.n*e;el.textContent=el.dataset.f==='tk'?tk(v):bn(v)}if(p<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
 function render(){
- for(const a of document.querySelectorAll('nav a'))a.classList.toggle('on',a.dataset.v===(view==='edit'?'orders':view));
+ for(const a of document.querySelectorAll('nav a'))a.classList.toggle('on',a.dataset.v===(view==='orders'&&filter==='trash'?'trash':view==='edit'?'orders':view));
  $('#bizname').textContent=cfg.name||'Beatrate Production Data';paintLogo();
  const H={dashboard:[greet(),'আজ আপনার ব্যবসার অবস্থা এক নজরে।'],orders:['অর্ডার','সব অর্ডার, কোনটা কোন ধাপে আর কত বাকি।'],edit:[editing&&orders.some(x=>x.id===editing.id)?'অর্ডার এডিট':'নতুন অর্ডার','তথ্য দিন, হিসাব নিজে হবে।'],calculator:['দাম হিসাব','মেসেজ, PDF বা ছবি দিন, অথবা নিজে বসান। কাস্টমার টোটাল, প্রোভাইডার টোটাল আর লাভ সাথে সাথে।'],import:['স্মার্ট ইমপোর্ট','কাস্টমারের PDF, ছবি বা মেসেজ দিন, অর্ডার নিজে তৈরি হবে।'],'ad-cost':['অ্যাড খরচ','প্রতিদিনের অ্যাড খরচ লিখে রাখুন।'],prices:['দাম ও সেটিং','ফ্যাব্রিক, এক্সট্রা চার্জ আর প্রোভাইডারের দাম।']}[view]||['',''];
  $('#hello').textContent=H[0];$('#subhello').textContent=H[1];
@@ -988,7 +989,7 @@ function render(){
  if(fresh&&view==='dashboard'&&!matchMedia('(prefers-reduced-motion: reduce)').matches)countUp();
  const t=target();if(t&&$('#lwarn'))$('#lwarn').innerHTML=view==='calculator'?'':lineWarn(t);
 }
-function route(){const h=location.hash.slice(1);view=h==='import'?'calculator':['dashboard','orders','calculator','ad-cost','prices'].includes(h)?h:'dashboard';editing=null;draft=null;render();scrollTo(0,0)}
+function route(){const h=location.hash.slice(1);if(h==='trash'){filter='trash';view='orders';editing=null;draft=null;render();scrollTo(0,0);return}if(h==='orders'&&filter==='trash')filter='active';view=h==='import'?'calculator':['dashboard','orders','calculator','ad-cost','prices'].includes(h)?h:'dashboard';editing=null;draft=null;render();scrollTo(0,0)}
 const target=()=>view==='edit'?editing:view==='calculator'?calcS:null;
 function refresh(){const o=target();if(!o)return;
  {const an=$('#advnote');if(an)an.innerHTML=tr(advNote(o))}
