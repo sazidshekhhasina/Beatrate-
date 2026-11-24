@@ -409,6 +409,7 @@ function sizeOf(t){const u=toEn(t).toUpperCase().replace(/[^A-Z0-9ঀ-৿]/g,'')
 const LABEL=/^(name|names|player|players|নাম|size|সাইজ|no|num|number|jersey|নং|নম্বর|নাম্বার|sl|serial|slno|sleeve|হাতা|tshirt|shirt)$/i;
 const SLV=/^(half|hs|short|হাফ|full|fs|long|ফুল)$/i;
 function parsePlayer(line){
+ let meas='';{const mm=toEn(line).match(/\(?\s*\b(\d{2})\s*\/\s*(\d{2})\b\s*\)?/);if(mm){meas=mm[1]+'/'+mm[2];line=line.slice(0,mm.index)+' '+line.slice(mm.index+mm[0].length)}}
  const toks=[];const re=/[^\s,;|\t\-–—:=()\[\]\/#]+/g;let m;while(m=re.exec(line))toks.push({t:m[0],i:m.index,e:m.index+m[0].length,used:false});
  if(!toks.length)return null;
  let size=null,sl=null,no='';
@@ -416,6 +417,7 @@ function parsePlayer(line){
  for(let k=0;k<toks.length-1;k++){if(/^[2-6]$/.test(toEn(toks[k].t))&&/^xl$/i.test(toks[k+1].t)&&nNum>1&&/^\s+$/.test(line.slice(toks[k].e,toks[k+1].i))){toks[k].join=toks[k+1]}}
  for(let k=toks.length-1;k>=0;k--){let tk2=toks[k];let z=null;if(k>0&&toks[k-1].join===tk2){tk2=toks[k-1];z=toEn(tk2.t)+'XL'}else if(tk2.join){z=toEn(tk2.t)+'XL'}else z=sizeOf(tk2.t);
   if(z&&!(z.length===1&&k===0&&toks.length>2)){size=z;tk2.used=true;if(tk2.join)tk2.join.used=true;break}}
+ if(!size&&meas)size=meas;
  if(!size)return null;
  for(const tk2 of toks){if(tk2.used)continue;if(SLV.test(tk2.t)){sl=/half|hs|short|হাফ/i.test(tk2.t)?HALF:FULL;tk2.used=true}else if(LABEL.test(tk2.t))tk2.used=true}
  const nums=toks.filter(x=>!x.used&&/^\d{1,3}\.?$/.test(toEn(x.t)));
@@ -428,11 +430,11 @@ function parsePlayer(line){
  if(/jersey\s*production|invoice|beatrate|ইনভয়েস/i.test(line))return null;
  return {name,no,size,sl};
 }
-const FAB_ALIAS=[[/পিপি|ইন্টারলক/,'PP / Interlock'],[/পিন\s*হোল/,'Pin Hole Mesh'],[/বার্ডস?\s*আই/,'Birds Eye Mesh'],[/বক্স\s*মেশ/,'Box Mesh'],[/লিফ|ব্রাশ/,'Leaf / Brush Jacquard'],[/কিউব|প্লেয়ার\s*এডিশন/,'Player Edition Cube Jacquard'],[/\bpp\b|interlock|plain\s*poly/i,'PP / Interlock'],[/pin\s*-?hole/i,'Pin Hole Mesh'],[/bird'?s?\s*-?eye|birds?eye/i,'Birds Eye Mesh'],[/box\s*mesh/i,'Box Mesh'],[/leaf|brush/i,'Leaf / Brush Jacquard'],[/cube|player\s*edition/i,'Player Edition Cube Jacquard']];
+const FAB_ALIAS=[[/পিপি|ইন্টারলক/,'PP / Interlock'],[/পিন\s*হোল/,'Pin Hole Mesh'],[/বার্ডস?\s*আই/,'Birds Eye Mesh'],[/বক্স\s*মেশ/,'Box Mesh'],[/লিফ|ব্রাশ/,'Leaf / Brush Jacquard'],[/কিউব|প্লেয়ার\s*এডিশন/,'Player Edition Cube Jacquard'],[/\bpp\b|interlock|plain\s*poly/i,'PP / Interlock'],[/pin\s*-?hole/i,'Pin Hole Mesh'],[/bird'?s?\s*-?eye|birds?eye/i,'Birds Eye Mesh'],[/box\s*mesh/i,'Box Mesh'],[/\bleaf\b|\bbrush\b/i,'Leaf / Brush Jacquard'],[/\bcube\b|player\s*edition/i,'Player Edition Cube Jacquard']];
 function fabricOf(line){const L=line.toLowerCase().replace(/[’']/g,"'");
  for(const f of cfg.fabrics){if(L.includes(f.name.toLowerCase()))return f.name}
  for(const [re,nm] of FAB_ALIAS)if(re.test(L)&&cfg.fabrics.some(f=>f.name===nm))return nm;
- let best=null,sc=0;for(const f of cfg.fabrics){const w=f.name.toLowerCase().split(/[^a-z]+/).filter(x=>x.length>2&&!['fabric','mesh'].includes(x));const h=w.filter(x=>L.includes(x)).length;if(h>sc){sc=h;best=f.name}}return best}
+ let best=null,sc=0;for(const f of cfg.fabrics){const w=f.name.toLowerCase().split(/[^a-z]+/).filter(x=>x.length>2&&!['fabric','mesh'].includes(x));const h=w.filter(x=>new RegExp('(^|[^a-z])'+x+'([^a-z]|$)').test(L)).length;if(h>sc){sc=h;best=f.name}}return best}
 const collarOf=l=>/double\s*-?v|ডাবল\s*ভি/i.test(l)?'ডাবল ভি নেক':/polo|পোলো/i.test(l)?'পোলো কলার':/\bv\s*-?neck|ভি\s*নেক|\bv\s*collar/i.test(l)?'ভি নেক':/custom\s*(collar|neck)|কাস্টম\s*(কলার|গলা)/i.test(l)?'কাস্টম':/round|রাউন্ড|crew/i.test(l)?'রাউন্ড নেক':null;
 const sleeveOf=l=>/full|long\s*sleeve|ফুল/i.test(l)?FULL:/half|short\s*sleeve|হাফ/i.test(l)?HALF:null;
 function smartParse(text,def){
@@ -448,7 +450,7 @@ function smartParse(text,def){
   if(mm=line.match(/^(address|delivery\s*address|addr|ঠিকানা|ডেলিভারি\s*ঠিকানা)\s*[:：\-–]\s*(.+)$/i)){out.address=mm[2].trim();continue}
   if(mm=line.match(/^(client|customer|contact\s*person|কাস্টমার|ক্লায়েন্ট|অর্ডারকারী)(\s*name)?\s*[:：\-–]\s*(.+)$/i)){out.client=mm[3].replace(/(?:\+?88)?01[3-9]\d{8}/,'').trim();continue}
   if(/^(phone|mobile|contact|ফোন|মোবাইল)\s*[:：\-–]/i.test(line))continue;
-  if(/\b(grand\s*total|sub\s*-?total|total|মোট|সর্বমোট)\b|^(মোট|সর্বমোট)/i.test(line)&&!collarOf(line)){flush();continue}
+  if(/\b(grand\s*total|sub\s*-?total|total|মোট|সর্বমোট)\b|^(মোট|সর্বমোট)/i.test(line)&&!collarOf(line)){const tm=toEn(line).match(/(?:jerseys?|pcs|pieces|qty|quantity|জার্সি|পিস)?\D*?(\d{1,4})\s*(?:pcs|pieces|পিস|টা)?\s*$/i);if(tm&&/jersey|pcs|piece|qty|quantity|জার্সি|পিস/i.test(line))out.stated=+tm[1];flush();continue}
   {const bm=toEn(line).match(/^\s*(?:[4-6]\s*xl|x{4,6}l|৪\s*xl)\s*\+?\s*(?:(?:size|সাইজ)\s*)?(?:[:：\-–=]\s*)?(\d{1,4})\s*(?:pcs|pc|pieces?|পিস|টা|টি)?\s*$/i);if(bm){out.big+=+bm[1];continue}}
   if(/\ball\s*sizes?\b|সব\s*সাইজ|size\s*note|sizing|tolerance|included|description|unit\s*price/i.test(line)){continue}
   line=line.replace(/^\s*\d{1,2}[.)]?\s+(?=[^\d\s])/,m0=>/^\s*\d{1,2}[.)]?\s+$/.test(m0)&&(collarOf(line)||sleeveOf(line)||fabricOf(line))?'':m0);
@@ -474,7 +476,7 @@ function smartParse(text,def){
 function chatBubble(m){return `<div class="bub ${m.role}">${m.html||esc(m.text).replace(/\n/g,'<br>')}</div>`}
 function chatSummary(o,r){const k=calc(o),L=o.items.filter(i=>n(i.qty)).map(i=>`<li>${esc(lineName(o,i))}: <b>${bn(n(i.qty))} পিস</b>${n(i.big)?` (4XL+ ${bn(n(i.big))})`:''}</li>`).join('');
  return `${r&&(r.team||r.phone)?`<div class="sub">${esc([r.team,r.client,r.phone].filter(Boolean).join(' · '))}</div>`:''}<ul style="margin:6px 0;padding-left:18px">${L||'<li>কোনো জার্সি পাওয়া যায়নি</li>'}</ul>${parseRoster(o.roster).length?`<div class="sub">${bn(parseRoster(o.roster).length)} জনের নাম-সাইজ লিস্ট বসানো হয়েছে</div>`:''}
- <div class="sumrow"><span>কাস্টমার টোটাল<b class="c-sale">${tk(k.T)}</b></span><span>প্রোভাইডার টোটাল<b class="c-prov">${k.noCost?'?':tk(k.F)}</b></span><span>লাভ<b class="c-profit">${k.noCost?'?':tk(k.P)}</b></span></div>`}
+ ${r&&r.stated&&r.stated!==k.pcs?`<div class="warn" style="margin:6px 0">ফাইলে মোট ${bn(r.stated)} পিস লেখা আছে, কিন্তু পড়া গেছে ${bn(k.pcs)} পিস। একবার মিলিয়ে নিন।</div>`:r&&r.stated?`<div class="sub c-profit">✓ ফাইলের মোট ${bn(r.stated)} পিসের সাথে মিলেছে</div>`:''}<div class="sumrow"><span>কাস্টমার টোটাল<b class="c-sale">${tk(k.T)}</b></span><span>প্রোভাইডার টোটাল<b class="c-prov">${k.noCost?'?':tk(k.F)}</b></span><span>লাভ<b class="c-profit">${k.noCost?'?':tk(k.P)}</b></span></div>`}
 function rosterText(players){return players.map(p=>`${String(p.name||'').replace(/,/g,' ')}, ${p.no||''}, ${p.size||''}, ${p.sl===FULL?'ফুল':'হাফ'}`).join('\n')}
 function importToOrder(r,base){
  const o=base||{blocks:[],items:[]};o.blocks=[];o.items=[];
@@ -1108,7 +1110,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button,tr[
    parsed=smartParse(msg+'\n'+txt,{fabric:cfg.fabrics[0]?.name||'',collar:COLLARS[0],sleeve:HALF});
    if(!parsed.lines.length&&!parsed.players.length){done('বুঝতে পারিনি। জার্সির ধরন আর পিস লিখুন, যেমন: "পোলো হাফ হাতা পিপি ২০ পিস"।');return}
    if(isNew||parsed.lines.length&&parsed.team){importToOrder(parsed,o)}else{const t2=importToOrder(parsed,{blocks:[],items:[]});for(const b2 of t2.blocks){let ex=o.blocks.find(x=>x.fabric===b2.fabric);if(!ex){ex=b2;o.blocks.push(b2)}for(const it of t2.items.filter(i=>i.blk===b2.id)){it.blk=ex.id;o.items.push(it)}}if(t2.roster)o.roster=((o.roster||'')+'\n'+t2.roster).trim();o.items=o.items.filter(i=>n(i.qty));o.blocks=o.blocks.filter(b3=>o.items.some(i=>i.blk===b3.id));if(!o.blocks.length)normOrder(o)}
-   for(const k2 of ['team','client','phone','address'])if(parsed[k2])o[k2]=parsed[k2];o.src=((o.src||'')+'\n'+msg+'\n'+txt).trim().slice(0,40000);done(chatSummary(o,parsed))}
+   for(const k2 of ['team','client','phone','address'])if(parsed[k2])o[k2]=parsed[k2];o.src=((o.src||'')+'\n'+msg+'\n'+txt).trim().slice(0,40000);if(parsed&&!parsed.stated&&txt){try{parsed.stated=smartParse(txt,{fabric:cfg.fabrics[0]?.name||'',collar:COLLARS[0],sleeve:HALF}).stated}catch(_){}}done(chatSummary(o,parsed))}
   catch(e){done('কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন।')}}
  else if(a==='impclear'){impS=null;render()}
  else if(a==='copyfmt')copy(AIFMT,$('#aifmt'));
