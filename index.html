@@ -694,13 +694,13 @@ async function openMemo(o,type){
  if(type==='prov'&&calc(o).noCost){toast('প্রোভাইডারের দাম বসানো নেই, আগে দাম দিন');return}
  if(type!=='list'&&!calc(o).pcs){toast('আগে পিস সংখ্যা দিন');return}
  if(type==='list'&&!parseRoster(o.roster).length){toast('আগে নাম-সাইজ লিস্ট দিন');return}
- memo=type==='list'?await listCanvas(o):await memoCanvas(o,type);$('#mtitle').textContent=tr(memo.title)+' · '+memo.no;
+ memo=type==='list'?await listCanvas(o):await memoCanvas(o,type);memo.team=(o.team||o.client||'').trim();$('#mtitle').textContent=tr(memo.title)+' · '+memo.no;
  $('#mimgs').innerHTML=memo.canvases.map(cv=>`<img src="${cv.toDataURL('image/png')}" alt="">`).join('');$('#modal').style.display='block';$('#modal').scrollTop=0;
 }
 async function saveMemo(kind){
  if(!memo)return;let dl=null;try{dl=window.claude&&claude.use?await claude.use('downloads'):null}catch(_){}
  if(!dl){$('#mnote').textContent=tr('এখানে সরাসরি ডাউনলোড হচ্ছে না। ছবির উপর রাইট-ক্লিক বা লং-প্রেস করে সেভ করুন।');return}
- const name=`${memo.no} ${tr(memo.title)}.${kind}`;
+ const safe=x=>String(x||'').replace(/[\\/:*?"<>|\n\r\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,80);const name=`${memo.team?safe(memo.team)+' - ':''}${safe(tr(memo.title))}${memo.team?'':' '+memo.no}.${kind}`;
  try{const data=kind==='pdf'?pdfBytes(memo.canvases):await new Promise(r=>memo.canvases[0].toBlob(r,'image/png'));await dl.save({filename:name,data});toast('ডাউনলোড হয়েছে')}
  catch(e){if(e&&e.code!=='declined')toast('ডাউনলোড হয়নি, আবার চেষ্টা করুন')}
 }
